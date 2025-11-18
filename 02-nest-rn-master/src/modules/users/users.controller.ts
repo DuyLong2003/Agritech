@@ -30,23 +30,17 @@ export class UsersController {
   }
 
   @Patch()
-  update(@Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(updateUserDto);
+  @UseInterceptors(FileInterceptor('avatar'))
+  async update(
+    @Body() updateUserDto: UpdateUserDto,
+    @UploadedFile() file: Express.Multer.File
+  ) {
+    // Gọi hàm update 
+    return this.usersService.update(updateUserDto, file);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.usersService.remove(id);
-  }
-
-  // Upload avatar
-  @Patch('avatar')
-  @UseInterceptors(FileInterceptor('avatar', { storage: memoryStorage() }))
-  async uploadAvatar(@UploadedFile() file: Express.Multer.File, @Req() req: any) {
-    // lấy userId
-    const userId = req?.user?._id || req?.body?._id;
-    if (!userId) throw new BadRequestException('User id not provided');
-    const updated = await this.usersService.uploadAvatar(userId, file);
-    return { data: updated };
   }
 }
