@@ -1,50 +1,56 @@
-
-import { auth } from '@/auth';
-import { handleUpdateUserAction } from '@/utils/actions';
 import { sendRequestFile } from '@/utils/api';
 import {
     Modal, Input,
     Form, Row, Col, message,
     notification
 } from 'antd';
-import { useEffect } from 'react';
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSession } from "next-auth/react"; // <--- 1. IMPORT QUAN TRỌNG
 
 interface IProps {
     isUpdateModalOpen: boolean;
     setIsUpdateModalOpen: (v: boolean) => void;
     dataUpdate: any;
     setDataUpdate: any;
+    refreshTable: () => void;
 }
 
 const UserUpdate = (props: IProps) => {
 
     const {
         isUpdateModalOpen, setIsUpdateModalOpen,
-        dataUpdate, setDataUpdate
+        dataUpdate, setDataUpdate,
+        refreshTable
     } = props;
 
     const [form] = Form.useForm();
 
+    // <--- 2. LẤY SESSION ĐỂ CÓ TOKEN
+    const { data: session } = useSession();
+
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
+    const [loading, setLoading] = useState<boolean>(false);
 
     useEffect(() => {
         if (dataUpdate) {
-            //code
             form.setFieldsValue({
                 name: dataUpdate.name,
                 email: dataUpdate.email,
                 phone: dataUpdate.phone,
                 address: dataUpdate.address
-            })
+            });
+            setPreview(dataUpdate.image || "");
+            setSelectedFile(null);
         }
-    }, [dataUpdate])
+    }, [dataUpdate, form]);
 
     const handleCloseUpdateModal = () => {
-        form.resetFields()
+        form.resetFields();
         setIsUpdateModalOpen(false);
-        setDataUpdate(null)
+        setDataUpdate(null);
+        setPreview(null);
+        setSelectedFile(null);
     }
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,101 +64,51 @@ const UserUpdate = (props: IProps) => {
         }
     };
 
-    // const onFinish = async (values: any) => {
-    //     if (dataUpdate) {
-    //         const { name, phone, address } = values;
-    //         const res = await handleUpdateUserAction({
-    //             _id: dataUpdate._id, name, phone, address
-    //         })
-    //         if (res?.data) {
-    //             handleCloseUpdateModal();
-    //             message.success("Update user succeed")
-    //         } else {
-    //             notification.error({
-    //                 message: "Update User error",
-    //                 description: res?.message
-    //             })
-    //         }
-
-    //     }
-    // };
-
-    // const onFinish = async (values: any) => {
-    //     if (!dataUpdate) return;
-    //     const { name, phone, address } = values;
-
-    //     // 1) update basic fields first (existing action)
-    //     const res = await handleUpdateUserAction({
-    //         _id: dataUpdate._id, name, phone, address
-    //     });
-
-    //     if (!res?.data) {
-    //         notification.error({
-    //             message: "Update User error",
-    //             description: res?.message
-    //         });
-    //         return;
-    //     }
-
-    //     // 2) if file is selected -> upload avatar
-    //     if (selectedFile) {
-    //         // build FormData
-    //         const form = new FormData();
-    //         form.append('avatar', selectedFile);
-    //         // include user id (controller will accept id from req.user or form)
-    //         form.append('_id', dataUpdate._id);
-
-    //         // get session for token (you already use auth() in helpers)
-    //         const session = await auth();
-    //         const token = session?.user?.access_token;
-
-    //         const uploadRes = await sendRequestFile<any>({
-    //             url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users/avatar`,
-    //             method: 'PATCH',
-    //             body: form,
-    //             headers: {
-    //                 Authorization: `Bearer ${token}`
-    //                 // DON'T set content-type; browser will set multipart boundary automatically
-    //             },
-    //         });
-
-    //         if (uploadRes?.statusCode || uploadRes?.error) {
-    //             notification.error({
-    //                 message: "Upload avatar failed",
-    //                 description: uploadRes?.message || 'Unknown error'
-    //             });
-    //             return;
-    //         }
-    //     }
-
-    //     handleCloseUpdateModal();
-    //     message.success("Update user succeed");
-    // };
-
     const onFinish = async (values: any) => {
+        setLoading(true);
         try {
             const formData = new FormData();
             formData.append('_id', dataUpdate._id);
             formData.append('name', values.name);
-            formData.append('email', values.email);
-            formData.append('phone', values.phone ?? '');
-            formData.append('address', values.address ?? '');
+
+            // Logic: Chỉ gửi nếu có giá trị
+            if (values.phone) formData.append('phone', values.phone);
+            if (values.address) formData.append('address', values.address);
+
             if (selectedFile) {
                 formData.append('avatar', selectedFile);
             }
 
-            // gọi server action (không cần token)
-            await handleUpdateUserAction(formData);
+            // <--- 3. LẤY TOKEN (Check cả 2 trường hợp phổ biến)
+            // Ép kiểu any để TypeScript không bắt bẻ cấu trúc session
+            const token = (session as any)?.access_token ?? (session as any)?.user?.access_token;
 
-            message.success('Cập nhật user thành công');
-            setIsUpdateModalOpen(false);
-            setDataUpdate(null);
-        } catch (error: any) {
+            // <--- 4. GỬI REQUEST KÈM HEADER
+            const res = await sendRequestFile<IBackendRes<any>>({
+                url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users`,
+                method: "PATCH",
+                body: formData,
+                headers: {
+                    Authorization: `Bearer ${token}`, // <--- QUAN TRỌNG NHẤT
+                }
+            });
+
+            if (res.data || res.statusCode === 200) {
+                message.success("Update user thành công!");
+                handleCloseUpdateModal();
+                refreshTable();
+            } else {
+                notification.error({
+                    message: "Đã có lỗi xảy ra",
+                    description: res.message
+                });
+            }
+        } catch (error) {
             console.error(error);
-            message.error(error?.message || 'Cập nhật thất bại');
+            message.error("Có lỗi xảy ra khi kết nối server");
         }
+        setLoading(false);
     };
-
 
     return (
         <Modal
@@ -161,6 +117,7 @@ const UserUpdate = (props: IProps) => {
             onOk={() => form.submit()}
             onCancel={() => handleCloseUpdateModal()}
             maskClosable={false}
+            confirmLoading={loading}
         >
             <Form
                 name="basic"
@@ -170,14 +127,10 @@ const UserUpdate = (props: IProps) => {
             >
                 <Row gutter={[15, 15]}>
                     <Col span={24} md={12}>
-                        <Form.Item
-                            label="Email"
-                            name="email"
-                        >
+                        <Form.Item label="Email" name="email">
                             <Input type='email' disabled />
                         </Form.Item>
                     </Col>
-
                     <Col span={24} md={12}>
                         <Form.Item
                             label="Name"
@@ -188,35 +141,37 @@ const UserUpdate = (props: IProps) => {
                         </Form.Item>
                     </Col>
                     <Col span={24} md={12}>
-                        <Form.Item
-                            label="Phone"
-                            name="phone"
-                        >
+                        <Form.Item label="Phone" name="phone">
                             <Input />
                         </Form.Item>
                     </Col>
-
                     <Col span={24} md={12}>
-                        <Form.Item
-                            label="Address"
-                            name="address"
-                        >
+                        <Form.Item label="Address" name="address">
                             <Input />
                         </Form.Item>
                     </Col>
-
                     <Col span={24} md={12}>
-                        <Form.Item label="Image">
-                            <input type="file" accept="image/*" onChange={handleFileChange} />
-                            {preview && (
-                                <div style={{ marginTop: 8 }}>
-                                    <img src={preview} alt="preview" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8 }} />
-                                </div>
-                            )}
+                        <Form.Item label="Avatar">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleFileChange}
+                                />
+                                {preview && (
+                                    <img
+                                        src={preview}
+                                        alt="Preview"
+                                        style={{
+                                            width: 100, height: 100,
+                                            objectFit: 'cover', borderRadius: '50%',
+                                            border: '1px solid #ccc'
+                                        }}
+                                    />
+                                )}
+                            </div>
                         </Form.Item>
                     </Col>
-
-
                 </Row>
             </Form>
         </Modal>

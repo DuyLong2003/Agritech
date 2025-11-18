@@ -160,6 +160,7 @@ const UserTable = (props: IProps) => {
     const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
     const [dataUpdate, setDataUpdate] = useState<any>(null);
 
+    const { refresh } = useRouter();
     const columns = [
         {
             title: "STT",
@@ -297,6 +298,7 @@ const UserTable = (props: IProps) => {
                 setIsUpdateModalOpen={setIsUpdateModalOpen}
                 dataUpdate={dataUpdate}
                 setDataUpdate={setDataUpdate}
+                refreshTable={() => refresh()}
             />
         </>
     )
