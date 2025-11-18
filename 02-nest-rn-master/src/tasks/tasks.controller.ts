@@ -1,0 +1,45 @@
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { TasksService } from './tasks.service';
+import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
+import { Public } from '@/decorator/customize';
+
+@Controller('tasks')
+export class TasksController {
+  constructor(private readonly tasksService: TasksService) { }
+
+  @Post()
+  async create(@Body() dto: CreateTaskDto) {
+    const r = await this.tasksService.create(dto);
+    return { statusCode: 201, message: 'Created', data: r };
+  }
+
+  @Get()
+  async findAll(
+    @Query() queryParams: any,
+    @Query('current') current: string,
+    @Query('pageSize') pageSize: string,
+  ) {
+    const res = await this.tasksService.findAll(queryParams, +current, +pageSize);
+    return { statusCode: 200, message: 'OK', data: res };
+  }
+
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    const r = await this.tasksService.findOne(id);
+    return { statusCode: 200, message: 'OK', data: r };
+  }
+
+  @Patch()
+  async update(@Body() dto: UpdateTaskDto) {
+    const r = await this.tasksService.update(dto);
+    return { statusCode: 200, message: 'Updated', data: r };
+  }
+
+  @Delete(':id')
+  async remove(@Param('id') id: string) {
+    const r = await this.tasksService.remove(id);
+    return { statusCode: 200, message: 'Deleted', data: r };
+  }
+
+}

@@ -23,6 +23,10 @@ export class User {
     @Prop()
     image: string;
 
+    // public_id của Cloudinary (dùng để xóa/replace)
+    @Prop()
+    imagePublicId: string;
+
     @Prop({ default: "USERS" })
     role: string;
 

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
@@ -11,6 +11,13 @@ import { ChangePasswordAuthDto, CodeAuthDto, CreateAuthDto } from '@/auth/dto/cr
 import { v4 as uuidv4 } from 'uuid';
 import dayjs from 'dayjs';
 import { MailerService } from '@nestjs-modules/mailer';
+import { v2 as cloudinary } from 'cloudinary';
+import streamifier from 'streamifier';
+import { ConfigService } from '@nestjs/config';
+
+
+// (nếu chưa có) install streamifier: npm install streamifier
+
 
 @Injectable()
 export class UsersService {
@@ -19,8 +26,84 @@ export class UsersService {
     @InjectModel(User.name)
     private userModel: Model<User>,
 
-    private readonly mailerService: MailerService
-  ) { }
+    private readonly mailerService: MailerService,
+    private readonly configService: ConfigService,
+  ) {
+    cloudinary.config({
+      cloud_name: this.configService.get<string>('CLOUDINARY_CLOUD_NAME'),
+      api_key: this.configService.get<string>('CLOUDINARY_API_KEY'),
+      api_secret: this.configService.get<string>('CLOUDINARY_API_SECRET'),
+      secure: true,
+    });
+  }
+
+  private uploadBufferToCloudinary(buffer: Buffer, folder = 'avatars') {
+    return new Promise<any>((resolve, reject) => {
+      const upload_stream = cloudinary.uploader.upload_stream(
+        { folder, resource_type: 'image', overwrite: true, transformation: [{ width: 800, crop: "limit" }] },
+        (error, result) => {
+          if (error) return reject(error);
+          resolve(result);
+        },
+      );
+      streamifier.createReadStream(buffer).pipe(upload_stream);
+    });
+  }
+
+  private async destroyCloudinaryPublicId(publicId: string) {
+    if (!publicId) return;
+    try {
+      await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+    } catch (err) {
+      // log but don't fail the whole process
+      console.warn('Cloudinary destroy failed', err);
+    }
+  }
+
+  async uploadAvatar(userId: string, file: Express.Multer.File) {
+    if (!file || !file.buffer) {
+      throw new BadRequestException('No file provided');
+    }
+
+    // validate
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.mimetype)) {
+      throw new BadRequestException('Unsupported file type');
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      throw new BadRequestException('File too large (max 5MB)');
+    }
+
+    // find user
+    const user = await this.userModel.findById(userId);
+    if (!user) throw new BadRequestException('User not found');
+
+    // upload new image
+    let uploadRes;
+    try {
+      uploadRes = await this.uploadBufferToCloudinary(file.buffer, `your-app/avatars`);
+    } catch (err) {
+      console.error('Cloudinary upload error', err);
+      throw new InternalServerErrorException('Upload to Cloudinary failed');
+    }
+
+    // delete old image in Cloudinary if exists (use imagePublicId)
+    if (user.imagePublicId) {
+      await this.destroyCloudinaryPublicId(user.imagePublicId);
+    } else if (user.image) {
+      // fallback: if we stored only URL earlier, we can't reliably delete; skip
+    }
+
+    // save URL + public_id into user doc
+    await this.userModel.updateOne(
+      { _id: userId },
+      { image: uploadRes.secure_url, imagePublicId: uploadRes.public_id },
+    );
+
+    const updated = await this.userModel.findById(userId).select('-password');
+    return updated;
+  }
+
 
   isEmailExist = async (email: string) => {
     const user = await this.userModel.exists({ email });
@@ -47,15 +130,58 @@ export class UsersService {
     }
   }
 
-  async findAll(query: string, current: number, pageSize: number) {
+  // async findAll(query: string, current: number, pageSize: number) {
+  //   const { filter, sort } = aqp(query);
+  //   if (filter.current) delete filter.current;
+  //   if (filter.pageSize) delete filter.pageSize;
+
+  //   if (!current) current = 1;
+  //   if (!pageSize) pageSize = 10;
+
+  //   const totalItems = (await this.userModel.find(filter)).length;
+  //   const totalPages = Math.ceil(totalItems / pageSize);
+
+  //   const skip = (current - 1) * (pageSize);
+
+  //   const results = await this.userModel
+  //     .find(filter)
+  //     .limit(pageSize)
+  //     .skip(skip)
+  //     .select("-password")
+  //     .sort(sort as any);
+
+  //   return {
+  //     meta: {
+  //       current: current, //trang hiện tại
+  //       pageSize: pageSize, //số lượng bản ghi đã lấy
+  //       pages: totalPages,  //tổng số trang với điều kiện query
+  //       total: totalItems // tổng số phần tử (số bản ghi)
+  //     },
+  //     results //kết quả query
+  //   }
+  // }
+
+  async findAll(query: any, current: number, pageSize: number) {
+    // 'query' can be object from @Query() — ensure we stringify or pass to aqp
+    // api-query-params accepts object or string
     const { filter, sort } = aqp(query);
+
+    // nếu front gửi 'search', map thành filter.email = /search/i
+    if (filter.search) {
+      // chỉ tìm theo email (yêu cầu của bạn)
+      const searchValue = String(filter.search);
+      // chuyển thành regex, tìm email chứa searchValue (case-insensitive)
+      filter.email = { $regex: searchValue, $options: 'i' };
+      delete filter.search;
+    }
+
     if (filter.current) delete filter.current;
     if (filter.pageSize) delete filter.pageSize;
 
-    if (!current) current = 1;
-    if (!pageSize) pageSize = 10;
+    if (!current || isNaN(current)) current = 1;
+    if (!pageSize || isNaN(pageSize)) pageSize = 10;
 
-    const totalItems = (await this.userModel.find(filter)).length;
+    const totalItems = await this.userModel.countDocuments(filter);
     const totalPages = Math.ceil(totalItems / pageSize);
 
     const skip = (current - 1) * (pageSize);
@@ -77,6 +203,7 @@ export class UsersService {
       results //kết quả query
     }
   }
+
 
   findOne(id: number) {
     return `This action returns a #${id} user`;
@@ -253,5 +380,46 @@ export class UsersService {
     }
 
   }
+
+  // // helper: upload buffer to cloudinary, trả về secure_url
+  // private uploadBufferToCloudinary(buffer: Buffer, folder = 'avatars') {
+  //   return new Promise<{ public_id: string; secure_url: string }>((resolve, reject) => {
+  //     const upload_stream = cloudinary.uploader.upload_stream(
+  //       { folder, resource_type: 'image' },
+  //       (error, result) => {
+  //         if (error) return reject(error);
+  //         resolve(result as any);
+  //       }
+  //     );
+  //     streamifier.createReadStream(buffer).pipe(upload_stream);
+  //   });
+  // }
+
+  // // new method
+  // async uploadAvatar(userId: string, file: Express.Multer.File) {
+  //   if (!file || !file.buffer) {
+  //     throw new BadRequestException('No file provided');
+  //   }
+
+  //   // optional: validate mimetype/size
+  //   const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+  //   if (!allowed.includes(file.mimetype)) {
+  //     throw new BadRequestException('Unsupported file type');
+  //   }
+  //   if (file.size > 5 * 1024 * 1024) { // 5MB
+  //     throw new BadRequestException('File too large (max 5MB)');
+  //   }
+
+  //   // upload to cloudinary
+  //   const uploadRes = await this.uploadBufferToCloudinary(file.buffer, 'your-app/avatars');
+  //   const imageUrl = uploadRes.secure_url;
+
+  //   // update user doc
+  //   await this.userModel.updateOne({ _id: userId }, { image: imageUrl });
+
+  //   // return updated user (without password)
+  //   const updated = await this.userModel.findById(userId).select('-password');
+  //   return updated;
+  // }
 
 }
