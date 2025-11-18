@@ -174,8 +174,29 @@ const UserTable = (props: IProps) => {
             dataIndex: '_id',
         },
         {
+            title: "Avatar",
+            dataIndex: "image",
+            render: (url: string) => (
+                url ?
+                    <img
+                        src={url}
+                        alt="image"
+                        style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover" }}
+                    /> :
+                    <span>No image</span>
+            )
+        },
+        {
+            title: "Name",
+            dataIndex: "name"
+        },
+        {
             title: 'Email',
             dataIndex: 'email',
+        },
+        {
+            title: 'Phone',
+            dataIndex: 'phone',
         },
         {
             title: 'Actions',

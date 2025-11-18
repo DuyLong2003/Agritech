@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { AntdRegistry } from '@ant-design/nextjs-registry';
-
 import '@/app/globals.css';
 import NextAuthWrapper from "@/library/next.auth.wrapper";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import ReactQueryProvider from "@/library/react-query-provider";
 
 const inter = Inter({ subsets: ["latin"] });
+
+const queryClient = new QueryClient();
 
 export const metadata: Metadata = {
   title: "Page",
@@ -22,11 +26,13 @@ export default function RootLayout({
       <body className={inter.className}>
         <AntdRegistry>
           <NextAuthWrapper>
-            {children}
+            <ReactQueryProvider>
+              {children}
+            </ReactQueryProvider>
           </NextAuthWrapper>
         </AntdRegistry>
 
       </body>
-    </html>
+    </html >
   );
 }

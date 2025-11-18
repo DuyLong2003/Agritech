@@ -3,6 +3,7 @@ import Layout from "antd/es/layout";
 import Menu from "antd/es/menu";
 import {
     AppstoreOutlined,
+    CarryOutOutlined,
     MailOutlined,
     SettingOutlined,
     TeamOutlined,
@@ -22,7 +23,7 @@ const AdminSideBar = () => {
 
         {
             key: 'grp',
-            label: 'Hỏi Dân IT',
+            label: 'FullStack',
             type: 'group',
             children: [
                 {
@@ -34,6 +35,11 @@ const AdminSideBar = () => {
                     key: "users",
                     label: <Link href={"/dashboard/user"}>Manage Users</Link>,
                     icon: <TeamOutlined />,
+                },
+                {
+                    key: "task",
+                    label: <Link href={"/dashboard/tasks"}>Manage Tasks</Link>,
+                    icon: <CarryOutOutlined />,
                 },
                 {
                     key: 'sub1',
