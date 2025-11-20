@@ -171,10 +171,6 @@ const UserTable = (props: IProps) => {
             }
         },
         {
-            title: '_id',
-            dataIndex: '_id',
-        },
-        {
             title: "Avatar",
             dataIndex: "image",
             render: (url: string) => (

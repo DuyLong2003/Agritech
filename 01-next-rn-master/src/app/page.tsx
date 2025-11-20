@@ -1,11 +1,22 @@
-import { auth } from "@/auth";
-import HomePage from "@/components/layout/homepage";
+import FeaturesSection from "@/components/landing/FeaturesSection";
+import HeroSection from "@/components/landing/HeroSection";
+import TestimonialsSection from "@/components/landing/TestimonialsSection";
+import ThemeCheck from "@/components/landing/ThemeCheck";
+import LandingHeader from "@/components/layout/landing.header";
+import Footer from "@/components/layout/landing.footer";
+
 
 export default async function Home() {
-
   return (
-    <div>
-      <HomePage />
-    </div>
+    <main>
+      <LandingHeader />
+
+      <ThemeCheck />
+
+      <HeroSection />
+      <FeaturesSection />
+      <TestimonialsSection />
+      <Footer />
+    </main>
   );
 }
