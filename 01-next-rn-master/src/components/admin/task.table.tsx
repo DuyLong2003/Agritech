@@ -8,6 +8,7 @@ import { EditTwoTone, DeleteTwoTone } from "@ant-design/icons";
 import TaskCreate from "./task.create";
 import TaskUpdate from "./task.update";
 import { handleDeleteTaskAction } from "@/utils/actions";
+import { style } from "framer-motion/client";
 
 const { Search } = Input;
 
@@ -73,7 +74,6 @@ export default function TaskTable({ tasks = [], meta }: Props) {
             const res = await handleDeleteTaskAction(id);
             if (res?.data) {
                 message.success("Xóa thành công");
-
                 // const params = new URLSearchParams(searchParams.toString());
                 // replace(`${pathname}?${params.toString()}`);
             } else {
@@ -96,12 +96,6 @@ export default function TaskTable({ tasks = [], meta }: Props) {
             },
             width: 80,
         },
-        // {
-        //     title: "_id",
-        //     dataIndex: "_id",
-        //     key: "_id",
-        //     render: (v: any) => <span style={{ fontSize: 12 }}>{v}</span>,
-        // },
         {
             title: "Tên",
             dataIndex: "title",
@@ -114,13 +108,43 @@ export default function TaskTable({ tasks = [], meta }: Props) {
             key: "assignee",
             render: (v: any) => v ?? "-",
         },
+        // {
+        //     title: "Trạng thái",
+        //     dataIndex: "status",
+        //     key: "status",
+        //     render: (v: string) => {
+        //         const color = v === "done" ? "green" : v === "doing" ? "orange" : "blue";
+        //         return <Tag color={color} style={{ textTransform: "capitalize" }}>{v}</Tag>;
+        //     },
+        // },
         {
             title: "Trạng thái",
             dataIndex: "status",
             key: "status",
             render: (v: string) => {
-                const color = v === "done" ? "green" : v === "doing" ? "orange" : "blue";
-                return <Tag color={color} style={{ textTransform: "capitalize" }}>{v}</Tag>;
+                let color = "default";
+                let text = v;
+
+                // Map giá trị sang tiếng Việt và màu sắc tương ứng
+                switch (v) {
+                    case "todo":
+                        color = "blue";
+                        text = "Cần thực hiện";
+                        break;
+                    case "doing":
+                        color = "orange";
+                        text = "Đang thực hiện";
+                        break;
+                    case "done":
+                        color = "green";
+                        text = "Hoàn thành";
+                        break;
+                    default:
+                        color = "default";
+                        text = v; // Giữ nguyên nếu có trạng thái lạ
+                }
+
+                return <Tag color={color}>{text}</Tag>;
             },
         },
         {
@@ -220,11 +244,6 @@ export default function TaskTable({ tasks = [], meta }: Props) {
                         console.error(err);
                         message.error("Lỗi");
                     }
-                    // finally {
-                    //     // trigger refresh by re-navigating to same route with current params
-                    //     const params = new URLSearchParams(searchParams.toString());
-                    //     replace(`${pathname}?${params.toString()}`);
-                    // }
                 }}
             />
 
@@ -244,10 +263,6 @@ export default function TaskTable({ tasks = [], meta }: Props) {
                         console.error(err);
                         message.error("Lỗi update");
                     }
-                    // finally {
-                    //     const params = new URLSearchParams(searchParams.toString());
-                    //     replace(`${pathname}?${params.toString()}`);
-                    // }
                 }}
             />
         </>

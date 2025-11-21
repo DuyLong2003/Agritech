@@ -3,7 +3,7 @@ import HeroSection from "@/components/landing/HeroSection";
 import TestimonialsSection from "@/components/landing/TestimonialsSection";
 import ThemeCheck from "@/components/landing/ThemeCheck";
 import LandingHeader from "@/components/layout/landing.header";
-import Footer from "@/components/layout/landing.footer";
+import Footer from "@/components/layout/LandingFooter";
 
 
 export default async function Home() {
@@ -11,7 +11,7 @@ export default async function Home() {
     <main>
       <LandingHeader />
 
-      <ThemeCheck />
+      {/* <ThemeCheck /> */}
 
       <HeroSection />
       <FeaturesSection />

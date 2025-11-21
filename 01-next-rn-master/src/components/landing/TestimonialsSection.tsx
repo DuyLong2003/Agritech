@@ -78,7 +78,7 @@ export default function TestimonialsSection() {
                     <Title level={2} style={{ marginTop: 8, marginBottom: 16 }}>
                         Niềm tin từ những người nông dân
                     </Title>
-                    <Paragraph type="secondary" style={{ fontSize: 16, maxWidth: 600, margin: '0 auto' }}>
+                    <Paragraph style={{ fontSize: 16, maxWidth: 600, margin: '0 auto' }}>
                         Những câu chuyện thực tế từ các đối tác đã áp dụng thành công giải pháp công nghệ của Agritech.
                     </Paragraph>
                 </div>
@@ -166,7 +166,7 @@ export default function TestimonialsSection() {
                                             <Text strong style={{ display: 'block', fontSize: 16 }}>
                                                 {t.name}
                                             </Text>
-                                            <Text type="secondary" style={{ fontSize: 13 }}>
+                                            <Text style={{ fontSize: 13 }}>
                                                 {t.title}
                                             </Text>
                                         </div>

@@ -148,7 +148,7 @@ export default function LandingHeader() {
                                             <Text strong style={{ fontSize: 14 }}>
                                                 {session.user.name || "Người dùng"}
                                             </Text>
-                                            <Text type="secondary" style={{ fontSize: 11 }}>
+                                            <Text style={{ fontSize: 11 }}>
                                                 {session.user.email}
                                             </Text>
                                         </Flex>

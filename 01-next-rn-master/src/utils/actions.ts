@@ -126,55 +126,66 @@ export interface Task {
     title: string;
     description?: string;
     status: string;
+    assignee: string;
+    dueDate: Date;
 }
 
-export async function fetchTasks(
-    // BỎ 'token: string' khỏi tham số
-    params: { current: number; pageSize: number; search: string }
-): Promise<{ tasks: Task[]; meta: TaskMeta }> {
+// Định nghĩa lại type params
+interface FetchTasksParams {
+    current: number;
+    pageSize: number;
+    search?: string;
+    status?: string;
+    assignee?: string;
+}
 
-    // BƯỚC 1: LẤY SESSION TRÊN SERVER
+export async function fetchTasks(params: FetchTasksParams): Promise<{ tasks: Task[]; meta: TaskMeta }> {
     const session = await auth();
-    const token = session?.user?.access_token; // Giả sử token nằm ở đây
+    const token = session?.user?.access_token;
 
-    // Nếu không có token (chưa đăng nhập), báo lỗi
     if (!token) {
         console.error("fetchTasks Error: Not authenticated");
         return { tasks: [], meta: { total: 0, current: 1, pageSize: 10 } };
     }
 
-    // BƯỚC 2: LOGIC CŨ CỦA BẠN
-    const { current, pageSize, search } = params;
+    const { current, pageSize, search, status, assignee } = params;
 
     const query = new URLSearchParams();
     query.set("current", current.toString());
     query.set("pageSize", pageSize.toString());
-    if (search) query.set("search", search);
 
+    // Chỉ append nếu có giá trị
+    if (search) query.set("search", search); // Backend thường map search này với title
+    if (status) query.set("status", status);
+    if (assignee) query.set("assignee", assignee);
+
+    // API URL: http://backend/api/v1/tasks?current=1&pageSize=10&status=doing...
     const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tasks?${query.toString()}`;
 
-    // DÒNG DEBUG: Kiểm tra xem server gọi đi đâu
-    console.log(`[Server Action fetchTasks] Calling: ${url} with token: ${token.substring(0, 10)}...`);
+    try {
+        const res = await fetch(url, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+            cache: "no-store", // Đảm bảo không cache dữ liệu cũ
+            next: { tags: ["list-tasks"] } // Nếu dùng Next.js Cache
+        });
 
-    const res = await fetch(url, {
-        headers: {
-            // BƯỚC 3: DÙNG TOKEN TỪ SESSION
-            Authorization: `Bearer ${token}`, // <-- SỬA Ở ĐÂY
-            "Content-Type": "application/json",
-        },
-    });
+        if (!res.ok) {
+            console.error(`Fetch tasks failed: ${res.status}`);
+            return { tasks: [], meta: { total: 0, current, pageSize } };
+        }
 
-    if (!res.ok) {
-        console.error(`Fetch tasks failed: ${res.status}`);
+        const jsonResponse = await res.json();
+        const data = jsonResponse.data?.data;
+
+        return {
+            tasks: data?.results ?? [],
+            meta: data?.meta ?? { total: 0, current, pageSize },
+        };
+    } catch (error) {
+        console.error("Fetch error:", error);
         return { tasks: [], meta: { total: 0, current, pageSize } };
     }
-
-    const jsonResponse = await res.json();
-    const data = jsonResponse.data?.data;
-
-    return {
-        tasks: data?.results ?? [],
-        meta: data?.meta ?? { total: 0, current, pageSize },
-    };
 }
-
