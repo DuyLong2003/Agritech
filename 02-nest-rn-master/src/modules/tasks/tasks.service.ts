@@ -38,21 +38,78 @@ export class TasksService {
     return { _id: task._id };
   }
 
+  // async findAll(query: any, current: number, pageSize: number) {
+  //   const { filter, sort } = aqp(query);
+
+  //   // Support 'search' -> search in title (exact requirement was /tasks; we'll allow title search)
+  //   if (filter.search) {
+  //     const val = String(filter.search);
+  //     filter.title = { $regex: val, $options: 'i' };
+  //     delete filter.search;
+  //   }
+
+  //   if (filter.current) delete filter.current;
+  //   if (filter.pageSize) delete filter.pageSize;
+
+  //   if (!current || isNaN(current)) current = 1;
+  //   if (!pageSize || isNaN(pageSize)) pageSize = 10;
+
+  //   const totalItems = await this.taskModel.countDocuments(filter);
+  //   const totalPages = Math.ceil(totalItems / pageSize);
+  //   const skip = (current - 1) * pageSize;
+
+  //   const results = await this.taskModel
+  //     .find(filter)
+  //     .limit(pageSize)
+  //     .skip(skip)
+  //     .sort(sort as any)
+  //     .lean();
+
+  //   return {
+  //     meta: {
+  //       current,
+  //       pageSize,
+  //       pages: totalPages,
+  //       total: totalItems,
+  //     },
+  //     results,
+  //   };
+  // }
+
+  // ... các import giữ nguyên
+
   async findAll(query: any, current: number, pageSize: number) {
     const { filter, sort } = aqp(query);
 
-    // Support 'search' -> search in title (exact requirement was /tasks; we'll allow title search)
-    if (filter.search) {
-      const val = String(filter.search);
-      filter.title = { $regex: val, $options: 'i' };
-      delete filter.search;
-    }
-
+    // 1. Xử lý tham số 'current' và 'pageSize' để không lọt vào filter của MongoDB
     if (filter.current) delete filter.current;
     if (filter.pageSize) delete filter.pageSize;
 
+    // 2. Default pagination
     if (!current || isNaN(current)) current = 1;
     if (!pageSize || isNaN(pageSize)) pageSize = 10;
+
+    // --- SỬA LOGIC TÌM KIẾM GẦN ĐÚNG (FUZZY SEARCH) ---
+
+    // Trường hợp 1: Dùng thanh search chung (?search=...)
+    if (filter.search) {
+      // Gán vào title để tìm
+      filter.title = { $regex: filter.search, $options: 'i' };
+      delete filter.search;
+    }
+
+    // Trường hợp 2: ProTable gửi đích danh cột (?title=... hoặc ?assignee=...)
+    // Kiểm tra nếu title là string thì chuyển sang regex
+    if (filter.title && typeof filter.title === 'string') {
+      filter.title = { $regex: filter.title, $options: 'i' };
+    }
+
+    // Tương tự với assignee
+    if (filter.assignee && typeof filter.assignee === 'string') {
+      filter.assignee = { $regex: filter.assignee, $options: 'i' };
+    }
+
+    // ---------------------------------------------------
 
     const totalItems = await this.taskModel.countDocuments(filter);
     const totalPages = Math.ceil(totalItems / pageSize);
@@ -63,7 +120,7 @@ export class TasksService {
       .limit(pageSize)
       .skip(skip)
       .sort(sort as any)
-      .lean();
+      .lean(); // Dùng lean() để query nhanh hơn vì chỉ cần đọc
 
     return {
       meta: {
