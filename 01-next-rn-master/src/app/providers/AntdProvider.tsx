@@ -44,7 +44,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ConfigProvider, FloatButton, theme as antTheme } from 'antd';
+import { App, ConfigProvider, FloatButton, theme as antTheme } from 'antd';
 import { ProConfigProvider } from '@ant-design/pro-components'; // 1. Import ProConfigProvider
 import { MoonOutlined, SunOutlined } from '@ant-design/icons';
 import { getAntdTheme } from '@/library/theme.config';
@@ -88,7 +88,9 @@ export default function AntdProvider({ children }: { children: React.ReactNode }
                     colorPrimary: currentThemeConfig.token?.colorPrimary,
                 }}
             >
-                {children}
+                <App>
+                    {children}
+                </App>
 
                 <FloatButton
 

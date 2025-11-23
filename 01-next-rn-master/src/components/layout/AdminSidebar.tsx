@@ -129,7 +129,8 @@ import {
     MailOutlined,
     TeamOutlined,
     DashboardOutlined,
-    FileAddOutlined
+    FileAddOutlined,
+    CloudUploadOutlined
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { usePathname } from 'next/navigation';
@@ -168,9 +169,9 @@ export default function AdminSidebar({ collapsed }: AdminSidebarProps) {
                     icon: <CarryOutOutlined />,
                 },
                 {
-                    key: '/dashboard/upload',
-                    label: <Link href="/dashboard/upload">Upload File</Link>,
-                    icon: <FileAddOutlined />,
+                    key: '/dashboard/files',
+                    label: <Link href="/dashboard/files">Upload File</Link>,
+                    icon: <CloudUploadOutlined />,
                 },
                 {
                     key: 'sub1',

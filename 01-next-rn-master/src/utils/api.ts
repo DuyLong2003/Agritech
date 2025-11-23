@@ -79,3 +79,24 @@ export const sendRequestFile = async <T>(props: IRequest) => { //type
         }
     });
 };
+
+// Hàm upload file
+export const uploadFile = async (file: File, token: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/files/upload`, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            // Lưu ý: Không set Content-Type, để browser tự set boundary cho FormData
+        },
+        body: formData,
+    });
+
+    if (!res.ok) {
+        throw new Error('Upload failed');
+    }
+
+    return await res.json();
+};
