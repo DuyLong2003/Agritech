@@ -20,6 +20,7 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
 import { TransformInterceptor } from '@/core/transform.interceptor';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { configureCloudinary } from './config/cloudinary.config';
+import { FilesModule } from './modules/files/files.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { configureCloudinary } from './config/cloudinary.config';
     ReviewsModule,
     TasksModule,
     AuthModule,
+    FilesModule,
     ConfigModule.forRoot({ isGlobal: true }),
     // configureCloudinary,
     MongooseModule.forRootAsync({
