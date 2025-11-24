@@ -172,7 +172,8 @@ export default function LandingHeader() {
                                         style={{
                                             backgroundColor: '#16a34a',
                                             borderColor: '#16a34a',
-                                            boxShadow: '0 2px 5px rgba(22, 163, 74, 0.2)'
+                                            boxShadow: '0 2px 5px rgba(22, 163, 74, 0.2)',
+                                            color: 'black'
                                         }}
                                     >
                                         Đăng ký
