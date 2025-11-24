@@ -21,6 +21,7 @@ import { TransformInterceptor } from '@/core/transform.interceptor';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { configureCloudinary } from './config/cloudinary.config';
 import { FilesModule } from './modules/files/files.module';
+import { ProductsModule } from './products/products.module';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { FilesModule } from './modules/files/files.module';
       inject: [ConfigService],
 
     }),
+    ProductsModule,
   ],
   controllers: [AppController],
   providers: [
