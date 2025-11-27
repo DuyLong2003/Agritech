@@ -6,11 +6,13 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { Products, ProductsDocument } from './schema/product.schema';
 import apiQueryParams from 'api-query-params';
 import mongoose from 'mongoose'; // Import để check ObjectId
+import { MinioService } from '@/modules/files/minio.service';
 
 @Injectable()
 export class ProductsService {
   constructor(
-    @InjectModel(Products.name) private productModel: Model<ProductsDocument>
+    @InjectModel(Products.name) private productModel: Model<ProductsDocument>,
+    private readonly minioService: MinioService
   ) { }
 
   async create(createProductDto: CreateProductDto) {
@@ -55,13 +57,57 @@ export class ProductsService {
     return this.productModel.findOne({ _id: id });
   }
 
+  // === Xử lý URL chuẩn xác ===
+  private parseUrl(url: string) {
+    if (!url) return null;
+    try {
+      // Tự động tách bucket và tên file từ URL
+      const urlObj = new URL(url);
+      const pathParts = urlObj.pathname.split('/').filter(p => p.length > 0);
+      if (pathParts.length >= 2) {
+        const bucketName = pathParts[0];
+        const fileName = decodeURIComponent(pathParts.slice(1).join('/'));
+        return { bucketName, fileName };
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   async update(id: string, updateProductDto: UpdateProductDto) {
     if (!mongoose.Types.ObjectId.isValid(id)) return `Product not found`;
+
+    const oldProduct = await this.productModel.findById(id);
+    if (!oldProduct) return `Product not found`;
+    if (updateProductDto.image !== undefined) {
+
+      // Nếu sản phẩm cũ ĐANG CÓ ảnh
+      if (oldProduct.image) {
+        if (updateProductDto.image !== oldProduct.image) {
+          const parsed = this.parseUrl(oldProduct.image);
+          if (parsed) {
+            await this.minioService.deleteFile(parsed.fileName, parsed.bucketName);
+          }
+        }
+      }
+    }
+
     return await this.productModel.updateOne({ _id: id }, { ...updateProductDto });
   }
 
+  // === DELETE PRODUCT ===
   async remove(id: string) {
     if (!mongoose.Types.ObjectId.isValid(id)) return `Product not found`;
+
+    const product = await this.productModel.findById(id);
+    if (product && product.image) {
+      const parsed = this.parseUrl(product.image);
+      if (parsed) {
+        await this.minioService.deleteFile(parsed.fileName, parsed.bucketName);
+      }
+    }
+
     return this.productModel.deleteOne({ _id: id });
   }
 }

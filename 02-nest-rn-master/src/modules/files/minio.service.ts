@@ -25,20 +25,21 @@ export class MinioService implements OnModuleInit {
         if (!exists) {
             await this.minioClient.makeBucket(this.bucketName, 'us-east-1');
 
-            // Set policy public để xem được ảnh
-            const policy = {
-                Version: '2012-10-17',
-                Statement: [
-                    {
-                        Effect: 'Allow',
-                        Principal: { AWS: ['*'] },
-                        Action: ['s3:GetObject'],
-                        Resource: [`arn:aws:s3:::${this.bucketName}/*`],
-                    },
-                ],
-            };
-            await this.minioClient.setBucketPolicy(this.bucketName, JSON.stringify(policy));
         }
+        // Set policy public để xem được ảnh
+        const policy = {
+            Version: '2012-10-17',
+            Statement: [
+                {
+                    Effect: 'Allow',
+                    Principal: { AWS: ['*'] },
+                    Action: ['s3:GetObject'],
+                    Resource: [`arn:aws:s3:::${this.bucketName}/*`],
+                },
+            ],
+        };
+        await this.minioClient.setBucketPolicy(this.bucketName, JSON.stringify(policy));
+
     }
 
     async uploadFile(file: Express.Multer.File) {
@@ -62,5 +63,15 @@ export class MinioService implements OnModuleInit {
             url: `${protocol}://${host}:${port}/${this.bucketName}/${fileName}`,
             fileName: fileName
         };
+    }
+
+    async deleteFile(fileName: string, bucketName?: string) {
+        const targetBucket = bucketName || this.bucketName;
+        try {
+            await this.minioClient.removeObject(targetBucket, fileName);
+            console.log(`Deleted file: ${fileName} from bucket: ${targetBucket}`);
+        } catch (error) {
+            console.error(`Failed to delete file ${fileName} from ${targetBucket}:`, error);
+        }
     }
 }

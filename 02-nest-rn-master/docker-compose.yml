@@ -1,14 +1,60 @@
 services:
   mongodb:
     image: mongo:5.0.15
+    container_name: agritech_mongo
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: 123456
     ports:
-      - 27017:27017
+      - "27017:27017"
     volumes:
-      - mongodb_data_container:/data/db
-      
-volumes:
-  mongodb_data_container:
+      - mongodb_data:/data/db
+    networks:
+      - agritech-network
 
+  redis:
+    image: redis:alpine
+    container_name: agritech_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - agritech-network
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: agritech_redis_ui
+    environment:
+      - REDIS_HOSTS=local:redis:6379:0
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - agritech-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: agritech_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: admin123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - agritech-network
+
+volumes:
+  mongodb_data:
+  redis_data:
+  minio_data:
+
+networks:
+  agritech-network:
+    driver: bridge
