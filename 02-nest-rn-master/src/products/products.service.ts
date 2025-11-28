@@ -5,7 +5,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Products, ProductsDocument } from './schema/product.schema';
 import apiQueryParams from 'api-query-params';
-import mongoose from 'mongoose'; // Import để check ObjectId
+import mongoose from 'mongoose';
 import { MinioService } from '@/modules/files/minio.service';
 
 @Injectable()

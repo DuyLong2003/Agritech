@@ -27,5 +27,4 @@ export class Products {
     updatedAt?: Date;
 }
 
-// SỬA LẠI DÒNG NÀY: UserSchema -> ProductSchema
 export const ProductSchema = SchemaFactory.createForClass(Products);

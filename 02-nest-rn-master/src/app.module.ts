@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, RequestMethod } from '@nestjs/common'; // Bỏ RequestMethod
 import { AppController } from '@/app.controller';
 import { AppService } from '@/app.service';
 import { UsersModule } from '@/modules/users/users.module';
@@ -19,9 +19,15 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import { TransformInterceptor } from '@/core/transform.interceptor';
 import { TasksModule } from './modules/tasks/tasks.module';
-import { configureCloudinary } from './config/cloudinary.config';
 import { FilesModule } from './modules/files/files.module';
 import { ProductsModule } from './products/products.module';
+import { CacheModule } from '@nestjs/cache-manager';
+import { BullModule } from '@nestjs/bull';
+import * as redisStore from 'cache-manager-redis-store';
+import { HealthModule } from './health/health.module';
+import { MailJobModule } from './modules/mail-job/mail-job.module';
+import { LoggerModule } from 'nestjs-pino';
+import { v4 as uuidv4 } from 'uuid';
 
 @Module({
   imports: [
@@ -38,7 +44,24 @@ import { ProductsModule } from './products/products.module';
     AuthModule,
     FilesModule,
     ConfigModule.forRoot({ isGlobal: true }),
-    // configureCloudinary,
+
+    CacheModule.registerAsync({
+      isGlobal: true,
+      useFactory: async () => ({
+        store: redisStore,
+        host: 'localhost',
+        port: 6379,
+        ttl: 60,
+      }),
+    }),
+
+    BullModule.forRoot({
+      redis: {
+        host: 'localhost',
+        port: 6379,
+      },
+    }),
+
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -46,6 +69,7 @@ import { ProductsModule } from './products/products.module';
       }),
       inject: [ConfigService],
     }),
+
     MailerModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -53,29 +77,62 @@ import { ProductsModule } from './products/products.module';
           host: "smtp.gmail.com",
           port: 465,
           secure: true,
-          // ignoreTLS: true,
-          // secure: false,
           auth: {
             user: configService.get<string>('MAIL_USER'),
             pass: configService.get<string>('MAIL_PASSWORD'),
           },
+          connectionTimeout: 10000,
+          greetingTimeout: 5000, // 5000ms = 5s
+          socketTimeout: 10000,
         },
-        defaults: {
-          from: '"No Reply" <no-reply@localhost>',
-        },
-        // preview: true,
+        defaults: { from: '"No Reply" <no-reply@localhost>' },
         template: {
           dir: process.cwd() + '/src/mail/templates/',
-          adapter: new HandlebarsAdapter(), // or new PugAdapter() or new EjsAdapter()
-          options: {
-            strict: true,
-          },
+          adapter: new HandlebarsAdapter(),
+          options: { strict: true },
         },
       }),
       inject: [ConfigService],
-
     }),
+
     ProductsModule,
+    HealthModule,
+    MailJobModule,
+
+    // --- CẤU HÌNH LOGGER CHUẨN ---
+    LoggerModule.forRoot({
+      pinoHttp: {
+        // 1. Sinh Request ID (Correlation ID)
+        genReqId: (req) => req.headers['x-request-id'] || uuidv4(),
+
+        // 2. Cấu hình Pretty Print
+        transport: {
+          target: 'pino-pretty',
+          options: {
+            singleLine: true,       // Log trên 1 dòng
+            translateTime: 'SYS:standard', // Hiển thị giờ hệ thống 
+            ignore: 'pid,hostname', // Ẩn PID và Hostname
+            colorize: true,
+          },
+        },
+
+        // 3. Tự động log request HTTP
+        // autoLogging: {
+        //   ignore: (req) => req.url.includes('/health'), // Bỏ qua log health check
+        // },
+        autoLogging: true,
+        // 4. Map các trường req/res vào log object
+        serializers: {
+          req: (req) => ({
+            id: req.id,
+            method: req.method,
+            url: req.url,
+          }),
+        },
+      },
+      // Áp dụng cho mọi route, ngoại trừ Health
+      //exclude: [{ method: RequestMethod.ALL, path: 'health' }],
+    }),
   ],
   controllers: [AppController],
   providers: [
