@@ -9,6 +9,7 @@ export const options = {
 export default function () {
     const res = http.get('http://localhost:8080/api/v1/tasks?current=1&pageSize=10');
 
+
     // --- In cấu trúc JSON ra console ---
     if (res.status === 200) {
         try {

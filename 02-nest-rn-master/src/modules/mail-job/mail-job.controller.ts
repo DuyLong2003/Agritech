@@ -8,7 +8,6 @@ export class MailJobController {
 
     @Post('welcome')
     async sendWelcomeEmail(@Body() body: { email: string }) {
-        // 1. Log ra xem Postman gửi cái gì lên (Debug)
         console.log('Data nhận từ Postman:', body);
 
         // 2. Validate thủ công
@@ -29,7 +28,7 @@ export class MailJobController {
         });
 
         return {
-            message: 'Đã nhận yêu cầu! Check terminal để xem worker chạy.',
+            message: 'Đã nhận yêu cầu!',
             timestamp: new Date()
         };
     }

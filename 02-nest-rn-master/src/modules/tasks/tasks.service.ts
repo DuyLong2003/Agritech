@@ -60,7 +60,8 @@ export class TasksService {
     if (cachedData) {
       this.logger.warn('HIT CACHE:', cacheKey);
       //console.log('HIT CACHE:', cacheKey);
-      return cachedData;
+      // return cachedData;
+      return { data: cachedData, isCacheHit: true };
     }
 
     // console.log('MISS CACHE -> Query DB');
@@ -107,7 +108,8 @@ export class TasksService {
     // 3. Lưu vào Cache (TTL 60 giây)
     await this.cacheManager.set(cacheKey, response, 60000);
 
-    return response;
+    // return response;
+    return { data: response, isCacheHit: false };
   }
 
   async findOne(id: string) {

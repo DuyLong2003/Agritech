@@ -9,7 +9,7 @@ export class MailJobProcessor {
     @Process('send-welcome')
     async handleSendEmail(job: Job) {
         // Log báo bắt đầu
-        console.log(`[Mail Worker] 🚀 Đang gửi mail cho: ${job.data.email}`);
+        console.log(`[Mail Worker] Đang gửi mail cho: ${job.data.email}`);
 
         try {
             // Gửi mail thực tế
@@ -24,14 +24,13 @@ export class MailJobProcessor {
             });
 
             // Log báo thành công
-            console.log(`[Mail Worker] ✅ Đã gửi THÀNH CÔNG cho ${job.data.email}`);
+            console.log(`[Mail Worker] Đã gửi THÀNH CÔNG cho ${job.data.email}`);
 
             // Trả về kết quả (để lưu vào log của Bull nếu cần)
             return { sent: true, email: job.data.email };
 
         } catch (error) {
-            // Nếu lỗi thật (sai pass, mất mạng thật) thì vẫn log ra để biết
-            console.error(`[Mail Worker] ❌ Lỗi gửi mail: ${error.message}`);
+            console.error(`[Mail Worker] Lỗi gửi mail: ${error.message}`);
             throw error; // Ném lỗi để Bull tự động Retry
         }
     }
