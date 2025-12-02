@@ -1,0 +1,120 @@
+name: CI/CD Pipeline
+
+# Kích hoạt khi push hoặc pull request vào nhánh master (hoặc main)
+on:
+  push:
+    branches: [ "master", "main" ]
+  pull_request:
+    branches: [ "master", "main" ]
+
+# Định nghĩa biến môi trường chung
+env:
+  NODE_VERSION: '20'
+  FE_DIR: '01-next-rn-master'
+  BE_DIR: '02-nest-rn-master'
+
+jobs:
+  # ====================================================
+  # JOB 1: BACKEND (NESTJS)
+  # ====================================================
+  backend-ci:
+    name: Backend CI (Test & Build)
+    runs-on: ubuntu-latest
+    # Chỉ chạy job này khi có thay đổi trong thư mục Backend hoặc file workflow này
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Kiểm tra xem có thay đổi trong folder BE không
+      - name: Check for Backend changes
+        uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            backend:
+              - '02-nest-rn-master/**'
+
+      # Nếu có thay đổi thì mới chạy các bước tiếp theo
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        if: steps.filter.outputs.backend == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          # Cache node_modules tự động để chạy nhanh hơn
+          cache: 'npm'
+          cache-dependency-path: './${{ env.BE_DIR }}/package-lock.json'
+
+      - name: Install Backend Dependencies
+        if: steps.filter.outputs.backend == 'true'
+        run: |
+          cd ${{ env.BE_DIR }}
+          npm ci --legacy-peer-deps
+
+      - name: Run Backend Tests
+        if: steps.filter.outputs.backend == 'true'
+        run: |
+          cd ${{ env.BE_DIR }}
+          npm run test
+
+      - name: Build Backend
+        if: steps.filter.outputs.backend == 'true'
+        run: |
+          cd ${{ env.BE_DIR }}
+          npm run build
+      
+      # Lưu lại file build (artifact) để dùng cho việc deploy sau này
+      - name: Upload Backend Artifact
+        if: steps.filter.outputs.backend == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dist
+          path: ${{ env.BE_DIR }}/dist
+          retention-days: 1
+
+  # ====================================================
+  # JOB 2: FRONTEND (NEXT.JS)
+  # ====================================================
+  frontend-ci:
+    name: Frontend CI (Build)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Check for Frontend changes
+        uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - '01-next-rn-master/**'
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        if: steps.filter.outputs.frontend == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: './${{ env.FE_DIR }}/package-lock.json'
+
+      - name: Install Frontend Dependencies
+        if: steps.filter.outputs.frontend == 'true'
+        run: |
+          cd ${{ env.FE_DIR }}
+          npm ci --legacy-peer-deps
+
+      - name: Build Frontend
+        if: steps.filter.outputs.frontend == 'true'
+        run: |
+          cd ${{ env.FE_DIR }}
+          # Truyền biến môi trường ảo nếu cần để build không lỗi
+          export NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+          npm run build
+
+      - name: Upload Frontend Artifact
+        if: steps.filter.outputs.frontend == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: ${{ env.FE_DIR }}/.next
+          retention-days: 1
