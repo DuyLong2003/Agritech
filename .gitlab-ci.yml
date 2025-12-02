@@ -1,0 +1,125 @@
+image: node:20-alpine
+
+stages:
+  - install
+  - test
+  - build
+
+# Định nghĩa biến đường dẫn để code gọn hơn
+variables:
+  FE_DIR: "01-next-rn-master"
+  BE_DIR: "02-nest-rn-master"
+
+# =================================================
+# PHẦN BACKEND (NESTJS)
+# =================================================
+
+# 1. Install Backend
+be_install:
+  stage: install
+  script:
+    - cd $BE_DIR
+    - npm ci --legacy-peer-deps
+  # Chỉ chạy khi có thay đổi trong thư mục BE
+  rules:
+    - changes:
+        - "$BE_DIR/**/*"
+  # Lưu cache node_modules cho BE
+  cache:
+    key: "be-deps"
+    paths:
+      - "$BE_DIR/node_modules"
+    policy: pull-push
+
+# 2. Test Backend
+be_test:
+  stage: test
+  script:
+    - cd $BE_DIR
+    # Link lại node_modules từ cache nếu cần (đôi khi cache gitlab cần trick này)
+    - if [ ! -d "node_modules" ]; then npm ci --legacy-peer-deps; fi
+    - npm run test
+  rules:
+    - changes:
+        - "$BE_DIR/**/*"
+  cache:
+    key: "be-deps"
+    paths:
+      - "$BE_DIR/node_modules"
+    policy: pull
+
+# 3. Build Backend
+be_build:
+  stage: build
+  script:
+    - cd $BE_DIR
+    - if [ ! -d "node_modules" ]; then npm ci --legacy-peer-deps; fi
+    - npm run build
+  artifacts:
+    paths:
+      - "$BE_DIR/dist/"
+    expire_in: 1 hour
+  rules:
+    - changes:
+        - "$BE_DIR/**/*"
+  cache:
+    key: "be-deps"
+    paths:
+      - "$BE_DIR/node_modules"
+    policy: pull
+
+# =================================================
+# PHẦN FRONTEND (NEXT.JS)
+# =================================================
+
+# 1. Install Frontend
+fe_install:
+  stage: install
+  script:
+    - cd $FE_DIR
+    - npm ci --legacy-peer-deps
+  rules:
+    - changes:
+        - "$FE_DIR/**/*"
+  cache:
+    key: "fe-deps"
+    paths:
+      - "$FE_DIR/node_modules"
+    policy: pull-push
+
+# 2. Test/Lint Frontend (Ví dụ chạy lint)
+fe_lint:
+  stage: test
+  script:
+    - cd $FE_DIR
+    - if [ ! -d "node_modules" ]; then npm ci --legacy-peer-deps; fi
+    - npm run lint
+  rules:
+    - changes:
+        - "$FE_DIR/**/*"
+  cache:
+    key: "fe-deps"
+    paths:
+      - "$FE_DIR/node_modules"
+    policy: pull
+
+# 3. Build Frontend
+fe_build:
+  stage: build
+  script:
+    - cd $FE_DIR
+    - if [ ! -d "node_modules" ]; then npm ci --legacy-peer-deps; fi
+    # Truyền biến môi trường ảo nếu cần để build không lỗi
+    - NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1 npm run build
+  artifacts:
+    paths:
+      - "$FE_DIR/.next/"
+    expire_in: 1 hour
+  rules:
+    - changes:
+        - "$FE_DIR/**/*"
+  cache:
+    key: "fe-deps"
+    paths:
+      - "$FE_DIR/node_modules"
+    policy: pull
