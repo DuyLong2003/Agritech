@@ -28,6 +28,8 @@ import { HealthModule } from './health/health.module';
 import { MailJobModule } from './modules/mail-job/mail-job.module';
 import { LoggerModule } from 'nestjs-pino';
 import { v4 as uuidv4 } from 'uuid';
+import { join } from 'path';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -47,19 +49,26 @@ import { v4 as uuidv4 } from 'uuid';
 
     CacheModule.registerAsync({
       isGlobal: true,
-      useFactory: async () => ({
+      imports: [ConfigModule], // Inject ConfigModule
+      useFactory: async (config: ConfigService) => ({ // Inject ConfigService
         store: redisStore,
-        host: 'localhost',
-        port: 6379,
+        // Đọc từ env, nếu không có thì mới fallback về localhost (để chạy local vẫn được)
+        host: config.get('REDIS_HOST') || 'localhost',
+        port: config.get('REDIS_PORT') || 6379,
         ttl: 60,
       }),
+      inject: [ConfigService],
     }),
 
-    BullModule.forRoot({
-      redis: {
-        host: 'localhost',
-        port: 6379,
-      },
+    BullModule.forRootAsync({ // Đổi sang forRootAsync
+      imports: [ConfigModule],
+      useFactory: async (config: ConfigService) => ({
+        redis: {
+          host: config.get('REDIS_HOST') || 'localhost',
+          port: config.get('REDIS_PORT') || 6379,
+        },
+      }),
+      inject: [ConfigService],
     }),
 
     MongooseModule.forRootAsync({
@@ -87,7 +96,8 @@ import { v4 as uuidv4 } from 'uuid';
         },
         defaults: { from: '"No Reply" <no-reply@localhost>' },
         template: {
-          dir: process.cwd() + '/src/mail/templates/',
+          // dir: process.cwd() + '/src/mail/templates/',
+          dir: join(__dirname, 'mail/templates'),
           adapter: new HandlebarsAdapter(),
           options: { strict: true },
         },
@@ -116,10 +126,6 @@ import { v4 as uuidv4 } from 'uuid';
           },
         },
 
-        // 3. Tự động log request HTTP
-        // autoLogging: {
-        //   ignore: (req) => req.url.includes('/health'), // Bỏ qua log health check
-        // },
         autoLogging: true,
         // 4. Map các trường req/res vào log object
         serializers: {
@@ -130,9 +136,12 @@ import { v4 as uuidv4 } from 'uuid';
           }),
         },
       },
-      // Áp dụng cho mọi route, ngoại trừ Health
-      //exclude: [{ method: RequestMethod.ALL, path: 'health' }],
     }),
+
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 10,
+    }]),
   ],
   controllers: [AppController],
   providers: [

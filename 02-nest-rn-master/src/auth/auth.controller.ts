@@ -4,6 +4,7 @@ import { LocalAuthGuard } from './passport/local-auth.guard';
 import { Public, ResponseMessage } from '@/decorator/customize';
 import { ChangePasswordAuthDto, CodeAuthDto, CreateAuthDto } from './dto/create-auth.dto';
 import { MailerService } from '@nestjs-modules/mailer';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
@@ -12,9 +13,12 @@ export class AuthController {
     private readonly mailerService: MailerService
   ) { }
 
-  @Post("login")
+
   @Public()
   @UseGuards(LocalAuthGuard)
+  @UseGuards(ThrottlerGuard)
+  // @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post("login")
   @ResponseMessage("Fetch login")
   handleLogin(@Request() req) {
     return this.authService.login(req.user);
@@ -43,8 +47,6 @@ export class AuthController {
   retryPassword(@Body("email") email: string) {
     return this.authService.retryPassword(email);
   }
-
-
 
   @Post('change-password')
   @Public()

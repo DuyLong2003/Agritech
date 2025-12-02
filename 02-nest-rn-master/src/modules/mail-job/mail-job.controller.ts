@@ -1,11 +1,13 @@
 import { Controller, Post, Body, Query, BadRequestException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { Public } from '@/decorator/customize';
 
 @Controller('mail-job')
 export class MailJobController {
     constructor(@InjectQueue('mail-queue') private mailQueue: Queue) { }
 
+    @Public()
     @Post('welcome')
     async sendWelcomeEmail(@Body() body: { email: string }) {
         console.log('Data nhận từ Postman:', body);

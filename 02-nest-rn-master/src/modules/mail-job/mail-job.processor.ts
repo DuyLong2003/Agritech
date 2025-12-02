@@ -6,7 +6,7 @@ import { MailerService } from '@nestjs-modules/mailer';
 export class MailJobProcessor {
     constructor(private readonly mailerService: MailerService) { }
 
-    @Process('send-welcome')
+    @Process({ name: 'send-welcome', concurrency: 5 })
     async handleSendEmail(job: Job) {
         // Log báo bắt đầu
         console.log(`[Mail Worker] Đang gửi mail cho: ${job.data.email}`);

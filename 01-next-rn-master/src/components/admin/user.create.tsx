@@ -28,10 +28,10 @@ const UserCreate = (props: IProps) => {
         const res = await handleCreateUserAction(values);
         if (res?.data) {
             handleCloseCreateModal();
-            message.success("Create succeed!")
+            message.success("Tạo người dùng thành công!")
         } else {
             notification.error({
-                message: "Create User error",
+                message: "Tạo người dùng không thành công!",
                 description: res?.message
             })
         }
@@ -40,7 +40,7 @@ const UserCreate = (props: IProps) => {
 
     return (
         <Modal
-            title="Add new user"
+            title="Thêm mới người dùng"
             open={isCreateModalOpen}
             onOk={() => form.submit()}
             onCancel={() => handleCloseCreateModal()}
@@ -57,25 +57,25 @@ const UserCreate = (props: IProps) => {
                         <Form.Item
                             label="Email"
                             name="email"
-                            rules={[{ required: true, message: 'Please input your email!' }]}
+                            rules={[{ required: true, message: 'Hãy điền email!' }]}
                         >
                             <Input type='email' />
                         </Form.Item>
                     </Col>
                     <Col span={24}>
                         <Form.Item
-                            label="Password"
+                            label="Mật khẩu"
                             name="password"
-                            rules={[{ required: true, message: 'Please input your password!' }]}
+                            rules={[{ required: true, message: 'Hãy điền mật khẩu!' }]}
                         >
                             <Input.Password />
                         </Form.Item>
                     </Col>
                     <Col span={24} >
                         <Form.Item
-                            label="Name"
+                            label="Tên"
                             name="name"
-                            rules={[{ required: true, message: 'Please input your name!' }]}
+                            rules={[{ required: true, message: 'Hãy nhập tên của bạn!' }]}
                         >
                             <Input />
                         </Form.Item>

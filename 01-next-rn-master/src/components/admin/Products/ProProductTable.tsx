@@ -8,11 +8,9 @@ import { useSession } from 'next-auth/react';
 import type { ColumnsType } from 'antd/es/table';
 import { useProducts } from '@/app/hooks/products/useProducts';
 import { useCreateProduct } from '@/app/hooks/products/useCreateProduct';
-// Giả sử bạn đã tạo hook này tương tự create
 import { useUpdateProduct } from '@/app/hooks/products/useUpdateProduct';
 import { useDeleteProduct } from '@/app/hooks/products/useDeleteProduct';
-import { uploadFile } from '@/utils/api'; // Hàm upload có sẵn của bạn
-
+import { uploadFile } from '@/utils/api';
 const ProProductTable = () => {
     const { data: session } = useSession();
     const token = session?.user?.access_token as string;
@@ -35,31 +33,71 @@ const ProProductTable = () => {
     });
 
     const createMutation = useCreateProduct();
-    const updateMutation = useUpdateProduct(); // Bạn tự tạo file này nhé
-    const deleteMutation = useDeleteProduct(); // Bạn tự tạo file này nhé
+    const updateMutation = useUpdateProduct();
+    const deleteMutation = useDeleteProduct();
 
     // --- Handlers ---
     const handleTableChange = (pagination: any) => {
         setMeta({ current: pagination.current, pageSize: pagination.pageSize });
     };
-
     const handleUpload = async ({ file, onSuccess, onError }: any) => {
         try {
             const res = await uploadFile(file, token);
-            // Giả sử res trả về { data: { url: "..." } } hoặc string url tùy API của bạn
-            // Dưới đây giả định API trả về trực tiếp hoặc theo cấu trúc backend response
-            onSuccess(res.data?.url || res.data);
+
+            // Logic mới: Dựa vào cấu trúc trả về của MinioService + TransformInterceptor
+            if (res && res.data && res.data.url) {
+                // onSuccess cần truyền đúng URL để Antd hiển thị preview status 'done'
+                // Tham số thứ 2 của onSuccess là object response gốc
+                onSuccess(res.data.url, res);
+                message.success("Upload ảnh thành công");
+            } else {
+                onError(new Error('Upload failed'));
+                message.error("Lỗi upload ảnh");
+            }
         } catch (err) {
             onError(err);
+            message.error("Lỗi kết nối server upload");
         }
     };
 
+    // const handleSubmit = async (values: any) => {
+    //     // Xử lý ảnh: Lấy URL từ fileList nếu có upload mới, hoặc giữ nguyên url cũ
+    //     let imageUrl = editingProduct?.image || "";
+    //     if (fileList.length > 0 && fileList[0].response) {
+    //         // Logic lấy link ảnh tùy thuộc vào response của uploadFile
+    //         imageUrl = fileList[0].response.url || fileList[0].response;
+    //     }
+
+    //     const payload = { ...values, image: imageUrl };
+
+    //     if (editingProduct) {
+    //         updateMutation.mutate({ id: editingProduct._id, data: payload, token }, {
+    //             onSuccess: () => closeModal()
+    //         });
+    //     } else {
+    //         createMutation.mutate({ data: payload, token }, {
+    //             onSuccess: () => closeModal()
+    //         });
+    //     }
+    // };
+
     const handleSubmit = async (values: any) => {
-        // Xử lý ảnh: Lấy URL từ fileList nếu có upload mới, hoặc giữ nguyên url cũ
-        let imageUrl = editingProduct?.image || "";
-        if (fileList.length > 0 && fileList[0].response) {
-            // Logic lấy link ảnh tùy thuộc vào response của uploadFile
-            imageUrl = fileList[0].response.url || fileList[0].response;
+        // Logic lấy link ảnh:
+        // 1. Nếu người dùng upload ảnh mới -> Lấy từ fileList[0].response
+        // 2. Nếu người dùng giữ nguyên ảnh cũ -> Lấy từ editingProduct.image
+        // 3. Antd Upload có cơ chế: nếu upload mới, nó có prop 'response'. Nếu ảnh cũ load lên, nó chỉ có prop 'url'.
+
+        let imageUrl = "";
+
+        if (fileList.length > 0) {
+            const file = fileList[0];
+            if (file.response) {
+                // Trường hợp vừa upload xong (Antd lưu kết quả onSuccess vào biến response)
+                imageUrl = file.response; // Do ở trên mình onSuccess(res.data.url)
+            } else if (file.url) {
+                // Trường hợp ảnh cũ load từ DB lên
+                imageUrl = file.url;
+            }
         }
 
         const payload = { ...values, image: imageUrl };
@@ -114,7 +152,21 @@ const ProProductTable = () => {
             title: 'Ảnh',
             dataIndex: 'image',
             key: 'image',
-            render: (url) => url ? <Image src={url} width={50} height={50} style={{ objectFit: 'cover' }} /> : 'N/A'
+            render: (url) => {
+                // Check xem có url không, nếu có thì render component Image
+                return url ? (
+                    <Image
+                        src={url}
+                        width={50}
+                        height={50}
+                        style={{ objectFit: 'cover', borderRadius: 4 }}
+                        alt="Product"
+                    // fallback="đường_dẫn_ảnh_lỗi_nếu_muốn"
+                    />
+                ) : (
+                    <span>Không có ảnh</span>
+                );
+            },
         },
         {
             title: 'Giá',

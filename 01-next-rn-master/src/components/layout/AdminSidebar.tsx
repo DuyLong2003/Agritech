@@ -213,7 +213,7 @@ export default function AdminSidebar({ collapsed }: AdminSidebarProps) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                borderBottom: `1px solid ${token.colorBorderSecondary}`
+                borderBottom: `1px solid ${token.colorBorderSecondary}`,
             }}>
                 <span style={{ fontSize: 24, marginRight: collapsed ? 0 : 8 }}>🌱</span>
                 {!collapsed && (

@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
 import { Logger } from 'nestjs-pino'; // <--- Import từ nestjs-pino
+import helmet from 'helmet';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -26,6 +27,9 @@ async function bootstrap() {
 
   // Kích hoạt Logger JSON
   app.useLogger(app.get(Logger));
+
+  //config helmet
+  app.use(helmet());
 
   await app.listen(port);
 

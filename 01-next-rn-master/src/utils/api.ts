@@ -89,7 +89,6 @@ export const uploadFile = async (file: File, token: string) => {
         method: 'POST',
         headers: {
             Authorization: `Bearer ${token}`,
-            // Lưu ý: Không set Content-Type, để browser tự set boundary cho FormData
         },
         body: formData,
     });

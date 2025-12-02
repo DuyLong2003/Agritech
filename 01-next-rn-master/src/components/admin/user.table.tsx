@@ -184,7 +184,7 @@ const UserTable = (props: IProps) => {
             )
         },
         {
-            title: "Name",
+            title: "Tên",
             dataIndex: "name"
         },
         {
@@ -192,11 +192,11 @@ const UserTable = (props: IProps) => {
             dataIndex: 'email',
         },
         {
-            title: 'Phone',
+            title: 'Điện thoại',
             dataIndex: 'phone',
         },
         {
-            title: 'Actions',
+            title: 'Hành động',
 
             render: (text: any, record: any, index: any) => {
                 return (
@@ -255,16 +255,16 @@ const UserTable = (props: IProps) => {
                 alignItems: "center",
                 marginBottom: 20
             }}>
-                <span>Manager Users</span>
+                <span>Quản lý người dùng</span>
                 <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                     <Search
-                        placeholder="Search by email"
+                        placeholder="Tìm kiếm email"
                         allowClear
                         defaultValue={searchParams.get('search') ?? undefined}
                         onSearch={onSearch}
                         style={{ width: 300 }}
                     />
-                    <Button onClick={() => setIsCreateModalOpen(true)}>Create User</Button>
+                    <Button onClick={() => setIsCreateModalOpen(true)}>Tạo mới</Button>
                 </div>
             </div>
             <Table
