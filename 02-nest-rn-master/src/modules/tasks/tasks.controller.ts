@@ -15,17 +15,6 @@ export class TasksController {
     return { statusCode: 201, message: 'Created', data: r };
   }
 
-  // @Public()
-  // @Get()
-  // async findAll(
-  //   @Query() queryParams: any,
-  //   @Query('current') current: string,
-  //   @Query('pageSize') pageSize: string,
-  // ) {
-  //   const res = await this.tasksService.findAll(queryParams, +current, +pageSize);
-  //   return { statusCode: 200, message: 'OK', data: res };
-  // }
-
   @Public()
   @Get()
   async findAll(
